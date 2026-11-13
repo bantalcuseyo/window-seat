@@ -39,6 +39,7 @@ const glc=document.getElementById("gl");
 const live=document.getElementById("al");
 const params=new URLSearchParams(location.search);
 const DEBUG=params.get("debug")||"";
+const FORCE2D=params.get("fx")==="2d";
 
 /* offscreen game buffer (post-fx samples this) */
 const game=document.createElement("canvas"); game.width=W; game.height=H;
@@ -210,13 +211,14 @@ function drawBackWall(scroll,t){
     const bx=i*520+xoff;
     // solid pale green wall, brighter at the top, dimmer at the floor line
     const g=ctx.createLinearGradient(0,360,0,660);
-    g.addColorStop(0,"#a9e8c8");g.addColorStop(.55,"#86cfa9");g.addColorStop(1,"#4f8f76");
+    // mid-dark night teal: L ~0.36 at the top, ~0.22 at the floor line
+    g.addColorStop(0,"#2f6b57");g.addColorStop(.55,"#26564a");g.addColorStop(1,"#1d3f35");
     ctx.fillStyle=g;ctx.fillRect(bx,360,520,300);
     // tube wash on the wall
-    ctx.fillStyle="rgba(255,255,255,.20)";ctx.fillRect(bx,360,520,30);
+    ctx.fillStyle="rgba(125,255,176,.16)";ctx.fillRect(bx,360,520,26);
     ctx.fillStyle="rgba(0,0,0,.18)";ctx.fillRect(bx,636,520,34);
     // posters + vending glow sit ON the wall
-    ctx.fillStyle="rgba(20,12,30,.55)";ctx.fillRect(bx+60,430,74,98);ctx.fillRect(bx+300,442,66,84);
+    ctx.fillStyle="rgba(10,6,16,.45)";ctx.fillRect(bx+60,430,74,98);ctx.fillRect(bx+300,442,66,84);
     ctx.fillStyle="rgba(245,184,114,.85)";ctx.fillRect(bx+182,424,88,110);
     ctx.fillStyle="rgba(255,240,210,.55)";ctx.fillRect(bx+190,438,72,44);
     ctx.fillStyle="rgba(20,12,30,.35)";ctx.fillRect(bx+182,530,88,4);
@@ -254,8 +256,8 @@ function drawNull(c,tr,x,y,s,t,opt={}){
   // pant tubes (wide, tapered, with crease)
   const pc=BOTTOM_COLOR[tr.bottom]||C.jeans;
   if(!opt.sit){
-    pant(c,-34+stance*0.3,legTop,-30+stance*0.3,legBot+10,30,pc,pose==="cross");
-    pant(c, 28-stance*0.2,legTop, 36-stance*0.2,legBot+10,30,pc,false);
+    pant(c,-38+stance*0.3,legTop,-34+stance*0.3,legBot+10,42,pc,pose==="cross");
+    pant(c, 34-stance*0.2,legTop, 42-stance*0.2,legBot+10,42,pc,false);
   }
   if(pose==="cross"){
     // crossed shin over the other leg
@@ -267,7 +269,7 @@ function drawNull(c,tr,x,y,s,t,opt={}){
   const tilt=(pose==="lean")?-6:(pose==="slouch")?-2:0;
   c.save();c.rotate(tilt*Math.PI/180);
   const topC=TOP_COLOR[tr.top]||C.cream;
-  const hw=44, bw=58;
+  const hw=53, bw=70;            // +20% wider torso
   c.fillStyle=topC;
   c.beginPath();
   c.moveTo(-hw,chest+breathe);c.lineTo(hw,chest+breathe);
@@ -312,7 +314,7 @@ function drawNull(c,tr,x,y,s,t,opt={}){
     gg.addColorStop(0,gcol+"88");gg.addColorStop(.5,gcol+"22");gg.addColorStop(1,gcol+"00");
     c.fillStyle=gg;ell(c,gx,gy-16,54,66);
     // light on chest + face
-    c.globalAlpha=.22;c.fillStyle=gcol;ell(c,gx,headY+30,26,18);c.globalAlpha=1;
+    c.save();c.globalAlpha=.20;c.fillStyle=gcol;ell(c,gx,headY+30,26,18);c.restore();
   }
   drawGadget(c,tr.gadget,gx,gy,t,opt);
 
@@ -477,22 +479,18 @@ function drawScene(t,scroll,stop){
 }
 function drawBenchSeg(sx,it,t,stop){
   const bx=sx-260;
-  // bench: backrest, seat slab, legs — dark value against the pale wall (readable furniture)
-  ctx.fillStyle="rgba(0,0,0,.42)";rr(ctx,bx+6,548,508,92,12);ctx.fill();      // cast shadow behind
-  ctx.fillStyle="#16302a";rr(ctx,bx,536,520,92,10);ctx.fill();                 // backrest (darkest)
-  ctx.fillStyle="#1d3f35";rr(ctx,bx,548,520,74,10);ctx.fill();
-  ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=3;
+  // bench: darker than the wall, 3px bright top edge, contact shadows
+  ctx.fillStyle="rgba(0,0,0,.55)";rr(ctx,bx+4,660,512,104,10);ctx.fill();      // ground shadow
+  ctx.fillStyle="#0f1f1a";rr(ctx,bx,536,520,92,10);ctx.fill();                 // backrest (darkest)
+  ctx.strokeStyle="rgba(0,0,0,.45)";ctx.lineWidth=3;
   for(let r=0;r<3;r++){ctx.beginPath();ctx.moveTo(bx+16,566+r*18);ctx.lineTo(bx+504,566+r*18);ctx.stroke()}
-  // seat top surface: mid teal with a bright rim toward the tube
-  // seat TOP PLANE in 3/4 view: back edge higher, front edge lower -> real depth
-  ctx.fillStyle="#3a7d64";
+  ctx.fillStyle="#16302a";                                                     // seat plane (3/4)
   ctx.beginPath();ctx.moveTo(bx,612);ctx.lineTo(bx+520,612);ctx.lineTo(bx+536,640);ctx.lineTo(bx-16,640);ctx.closePath();ctx.fill();
-  ctx.fillStyle="rgba(125,255,176,.45)";
-  ctx.beginPath();ctx.moveTo(bx,612);ctx.lineTo(bx+520,612);ctx.lineTo(bx+522,616);ctx.lineTo(bx-2,616);ctx.closePath();ctx.fill();
-  ctx.fillStyle="#16302a";
-  ctx.beginPath();ctx.moveTo(bx-16,640);ctx.lineTo(bx+536,640);ctx.lineTo(bx+536,660);ctx.lineTo(bx-16,660);ctx.closePath();ctx.fill();
-  ctx.fillStyle="#101d19";ctx.fillRect(bx+30,656,20,62);ctx.fillRect(bx+470,656,20,62);
-  ctx.fillStyle="rgba(0,0,0,.30)";ctx.fillRect(bx+30,700,20,18);ctx.fillRect(bx+470,700,20,18);
+  ctx.fillStyle="#12251f";                                                     // front face
+  ctx.beginPath();ctx.moveTo(bx-16,640);ctx.lineTo(bx+536,640);ctx.lineTo(bx+536,662);ctx.lineTo(bx-16,662);ctx.closePath();ctx.fill();
+  ctx.fillStyle="rgba(125,255,176,.95)";                                        // 3px bright top edge
+  ctx.beginPath();ctx.moveTo(bx,612);ctx.lineTo(bx+520,612);ctx.lineTo(bx+521,615);ctx.lineTo(bx-1,615);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#0d1a16";ctx.fillRect(bx+30,662,20,58);ctx.fillRect(bx+470,662,20,58);
   // props hint
   (it.frame.props||[]).forEach((p,i)=>{
     ctx.fillStyle="rgba(232,214,176,.22)";rr(ctx,bx+70+i*54,610,30,26,4);ctx.fill();
@@ -595,6 +593,7 @@ const FX={ready:false,prog:null,tex:null,cv:null,loc:{}};
 const VS="$vertex";
 let glCanvas=null, dispCtx=null;
 function initGL(){
+  if(FORCE2D)return false;                      // ?fx=2d exercises the fallback path
   try{
     glCanvas=document.createElement("canvas");
     glCanvas.width=960;glCanvas.height=1200;
@@ -659,9 +658,10 @@ function initGL(){
   }catch(e){console.warn("no gl",e);return false}
 }
 function present(t,signal){
-  if(FX.ready){
+  if(FX.ready&&!FORCE2D){
     const g=FX.gl;
     g.viewport(0,0,960,1200);
+    g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL,true);   // canvas origin is top-left, GL is bottom-left
     g.bindTexture(g.TEXTURE_2D,FX.tex);
     g.texImage2D(g.TEXTURE_2D,0,g.RGBA,g.RGBA,g.UNSIGNED_BYTE,game);
     g.uniform1f(FX.loc.sig,signal);g.uniform1f(FX.loc.t,t);
