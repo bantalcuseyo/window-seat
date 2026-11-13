@@ -116,10 +116,11 @@ const LINE=[
 const SEG=620, PAD=300;
 function stripOf(stop){
   if(stop._strip)return stop._strip;
-  const L=Math.round(Math.max(...stop.frames.map(f=>f.at))*SEG+PAD);
+  // one bench per segment: frames are a full bench apart, so neighbouring crowds can never overlap
+  const L=stop.frames.length*SEG;
   const strip={len:L,items:[]};
   stop.frames.forEach((f,i)=>{
-    strip.items.push({x:Math.round(f.at*L),frame:f,idx:i});
+    strip.items.push({x:i*SEG+Math.round(SEG*0.5),frame:f,idx:i});
   });
   stop._strip=strip;return strip;
 }
@@ -212,7 +213,8 @@ function drawBackWall(scroll,t){
     // solid pale green wall, brighter at the top, dimmer at the floor line
     const g=ctx.createLinearGradient(0,360,0,660);
     // mid-dark night teal: L ~0.36 at the top, ~0.22 at the floor line
-    g.addColorStop(0,"#2f6b57");g.addColorStop(.55,"#26564a");g.addColorStop(1,"#1d3f35");
+    g.addColorStop(0,"#74bda1");g.addColorStop(.55,"#5fa88c");g.addColorStop(1,"#3f8770");
+    SURVEY.push({el:"wall",x:bx,y:360,w:520,h:300,color:"#5fa88c"});
     ctx.fillStyle=g;ctx.fillRect(bx,360,520,300);
     // tube wash on the wall
     ctx.fillStyle="rgba(125,255,176,.16)";ctx.fillRect(bx,360,520,26);
@@ -330,6 +332,8 @@ function drawNull(c,tr,x,y,s,t,opt={}){
   c.quadraticCurveTo(hr*.9,hr*.8,0,hr*.82);   // flat chin
   c.quadraticCurveTo(-hr*.9,hr*.8,-hr,0);
   c.closePath();c.fill();
+  {const ss=opt.ss||1, ox=opt.sx||0, oy=opt.sy||0;
+   SURVEY.push({el:"head",x:ox+(0-hr)*ss,y:oy+(headY-hr)*ss,w:hr*2*ss,h:hr*2*ss,color:"#07060a",traits:tr});}
   // rim light: teal from tube (top-left), amber from train (right)
   c.strokeStyle="rgba(125,255,176,.85)";c.lineWidth=2.4;
   c.beginPath();c.arc(0,-hr*0.18,hr*.98,Math.PI*1.06,Math.PI*1.62);c.stroke();
@@ -436,7 +440,9 @@ function drawGadget(c,kind,x,y,t,opt){
 
 /* ---------- scene ---------- */
 const ENT=[];
+const SURVEY=[];   // readability audit: geometry + colour straight from the renderer
 function drawScene(t,scroll,stop){
+  SURVEY.length=0;
   ctx.save();
   const g=ctx.createLinearGradient(0,0,0,760);
   g.addColorStop(0,C.night);g.addColorStop(.5,"#141026");g.addColorStop(1,"#241a3a");
@@ -482,10 +488,12 @@ function drawBenchSeg(sx,it,t,stop){
   // bench: darker than the wall, 3px bright top edge, contact shadows
   ctx.fillStyle="rgba(0,0,0,.55)";rr(ctx,bx+4,660,512,104,10);ctx.fill();      // ground shadow
   ctx.fillStyle="#0f1f1a";rr(ctx,bx,536,520,92,10);ctx.fill();                 // backrest (darkest)
+  SURVEY.push({el:"bench.back",x:bx,y:536,w:520,h:92,color:"#0f1f1a"});
   ctx.strokeStyle="rgba(0,0,0,.45)";ctx.lineWidth=3;
   for(let r=0;r<3;r++){ctx.beginPath();ctx.moveTo(bx+16,566+r*18);ctx.lineTo(bx+504,566+r*18);ctx.stroke()}
   ctx.fillStyle="#16302a";                                                     // seat plane (3/4)
   ctx.beginPath();ctx.moveTo(bx,612);ctx.lineTo(bx+520,612);ctx.lineTo(bx+536,640);ctx.lineTo(bx-16,640);ctx.closePath();ctx.fill();
+  SURVEY.push({el:"bench.seat",x:bx-16,y:612,w:552,h:28,color:"#16302a"});
   ctx.fillStyle="#12251f";                                                     // front face
   ctx.beginPath();ctx.moveTo(bx-16,640);ctx.lineTo(bx+536,640);ctx.lineTo(bx+536,662);ctx.lineTo(bx-16,662);ctx.closePath();ctx.fill();
   ctx.fillStyle="rgba(125,255,176,.95)";                                        // 3px bright top edge
@@ -497,12 +505,12 @@ function drawBenchSeg(sx,it,t,stop){
   });
   const n=it.frame.nulls.length;
   it.frame.nulls.forEach((tr,k)=>{
-    const nx=sx+(k-(n-1)/2)*205, ny=614;   // feet on bench top
+    const nx=sx+(k-(n-1)/2)*238, ny=614;   // feet on bench top
     const key=stop.id+":"+it.frame.id+":"+k;
     const seen=(S.seen[key]||0);
     const secret=S.secrets[key];
     ctx.fillStyle="rgba(0,0,0,.38)";ell(ctx,nx,ny+22,52,9);   // contact shadow
-    drawNull(ctx,tr,nx,ny-6,0.92,t,{ph:k*1.7+(it.idx*2.1),awake:seen>0.4||secret,wave:!!secret,sit:true});
+    drawNull(ctx,tr,nx,ny-6,0.92,t,{ph:k*1.7+(it.idx*2.1),awake:seen>0.4||secret,wave:!!secret,sit:true,sx:nx,sy:ny-6,ss:0.92});
     ENT.push({key,x:nx,y:ny-250,w:150,h:260,frame:it.frame.id,nullIdx:k,traits:tr,bench:sx});
   });
 }
@@ -1226,7 +1234,7 @@ S.resume=loadState();
 if(DEBUG==="gallery"){gallery();setInterval(()=>present(0,1),300);}
 else if(DEBUG==="shots"){contactSheet();setInterval(()=>present(0,1),300);}
 else requestAnimationFrame(frame);
-window.__ws={get S(){return S},get cfg(){return cfg},get ENT(){return ENT},
+window.__ws={get SURVEY(){return SURVEY},get S(){return S},get cfg(){return cfg},get ENT(){return ENT},
   frame,drawCard,drawScene,present,contactSheet,gallery,stripOf,watchSeconds,allNullsOf,
   startRun,beginStop,answer,makeQuestion,questionsFor,labelGadget,fogAlphaAt,tier,cardCode,LINE};
 
