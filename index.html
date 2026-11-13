@@ -232,122 +232,95 @@ function ell(c,x,y,rx,ry,rot=0){c.beginPath();c.ellipse(x,y,rx,ry,rot,0,6.283);c
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
 
 function drawNull(c,tr,x,y,s,t,opt={}){
-  /* y = ground line (feet). Total height ≈ 280*s before scale */
+  /* Art bible: value ladder — body L0.01 on wall L0.30 on bench L0.10.
+     One key light (tube, top-left): 2px teal rim on the lit edge only, warm bounce on the other.
+     Silhouette first: head circle + trapezoid coat + two tube legs. No texture strokes. */
   const H0=240, headH=H0*0.38, bodyH=H0-headH;
-  const ph=(opt.ph||0), pose=tr.pose, breathe=Math.sin(t*1.7+ph)*1.4;
-  const awake=!!opt.awake, wave=!!opt.wave;
+  const ph=(opt.ph||0), pose=tr.pose, breathe=Math.sin(t*1.7+ph)*1.2;
+  const awake=!!opt.awake, wave=!!opt.wave, sit=!!opt.sit;
   c.save();c.translate(x,y);c.scale(s,s);
-  const hip=-bodyH*0.42, chest=-bodyH*0.92, headY=-(bodyH+headH*0.55);
+  const hip=-bodyH*0.40, chest=-bodyH*0.90, headY=-(bodyH+headH*0.52);
+  const topC=TOP_COLOR[tr.top]||C.cream, botC=BOTTOM_COLOR[tr.bottom]||C.jeans;
 
-  /* ---- legs + sneakers (pose changes stance) ---- */
-  const stance={upright:0,slouch:6,cross:14,lean:-8}[pose]||0;
-  const legTop=hip, legBot=-18;
-  if(opt.sit){
-    // seated: thigh forward, shin down (simple, readable)
-    const pc2=BOTTOM_COLOR[tr.bottom]||C.jeans;
-    const kneeY=legTop+26;
-    c.fillStyle=pc2;
-    c.beginPath();c.moveTo(-30,legTop-8);c.lineTo(6,legTop-8);c.lineTo(18,kneeY);c.lineTo(-26,kneeY+6);c.closePath();c.fill();
-    c.beginPath();c.moveTo(-26,kneeY+6);c.lineTo(6,kneeY+4);c.lineTo(2,kneeY+48);c.lineTo(-24,kneeY+48);c.closePath();c.fill();
-    drawShoe(c,-12,kneeY+56,tr.shoes,0);
-    drawShoe(c, 40,legBot,tr.shoes,1);
+  /* legs: two thick tubes; seated = thigh forward + shin hanging */
+  if(sit){
+    const knee=hip+34, shin=knee+56;
+    c.fillStyle=botC;
+    c.beginPath();c.moveTo(-40,hip-6);c.lineTo(6,hip-6);c.lineTo(22,knee);c.lineTo(-34,knee+10);c.closePath();c.fill();
+    c.beginPath();c.moveTo(-34,knee+10);c.lineTo(8,knee+2);c.lineTo(6,shin);c.lineTo(-32,shin);c.closePath();c.fill();
+    c.beginPath();c.moveTo(14,hip-2);c.lineTo(54,hip);c.lineTo(58,knee+12);c.lineTo(26,knee+8);c.closePath();c.fill();
+    c.beginPath();c.moveTo(26,knee+10);c.lineTo(58,knee+14);c.lineTo(56,shin+2);c.lineTo(28,shin);c.closePath();c.fill();
+    drawShoe(c,-10,shin+12,tr.shoes,0); drawShoe(c,42,shin+14,tr.shoes,1);
   } else {
-    drawShoe(c,-30+stance*0.3,legBot,tr.shoes,0);
-    drawShoe(c, 34-stance*0.2,legBot,tr.shoes,1);
-  }
-  // pant tubes (wide, tapered, with crease)
-  const pc=BOTTOM_COLOR[tr.bottom]||C.jeans;
-  if(!opt.sit){
-    pant(c,-38+stance*0.3,legTop,-34+stance*0.3,legBot+10,42,pc,pose==="cross");
-    pant(c, 34-stance*0.2,legTop, 42-stance*0.2,legBot+10,42,pc,false);
-  }
-  if(pose==="cross"){
-    // crossed shin over the other leg
-    c.save();c.strokeStyle=pc;c.lineWidth=26;c.lineCap="round";
-    c.beginPath();c.moveTo(-16,legTop+34);c.quadraticCurveTo(24,legBot-18,44,legBot+4);c.stroke();c.restore();
+    c.fillStyle=botC;
+    pant(c,-34,hip,-32,-16,44,botC,false); pant(c,30,hip,34,-16,44,botC,false);
+    drawShoe(c,-30,-18,tr.shoes,0); drawShoe(c,34,-18,tr.shoes,1);
   }
 
-  /* ---- torso: baggy trapezoid with folds ---- */
-  const tilt=(pose==="lean")?-6:(pose==="slouch")?-2:0;
+  /* coat: rounded trapezoid, one soft inner shade, no texture lines */
+  const tilt=(pose==="lean")?-5:(pose==="slouch")?-2:0;
   c.save();c.rotate(tilt*Math.PI/180);
-  const topC=TOP_COLOR[tr.top]||C.cream;
-  const hw=53, bw=70;            // +20% wider torso
+  const sh=46, hp=62;
   c.fillStyle=topC;
   c.beginPath();
-  c.moveTo(-hw,chest+breathe);c.lineTo(hw,chest+breathe);
-  c.quadraticCurveTo(bw+6,hip-18,bw,hip);
-  c.lineTo(-bw,hip);c.quadraticCurveTo(-bw-6,hip-18,-hw,chest+breathe);
+  c.moveTo(-sh+8,chest+breathe);c.quadraticCurveTo(-sh,chest+breathe,-sh+2,chest+14);
+  c.lineTo(-hp,hip);c.quadraticCurveTo(0,hip+8,hp,hip);
+  c.lineTo(sh-2,chest+14);c.quadraticCurveTo(sh,chest+breathe,sh-8,chest+breathe);
   c.closePath();c.fill();
-  // fabric folds
-  c.strokeStyle="rgba(0,0,0,.22)";c.lineWidth=2;
-  c.beginPath();c.moveTo(-26,chest+18);c.quadraticCurveTo(-18,hip-26,-26,hip-4);c.stroke();
-  c.beginPath();c.moveTo(22,chest+20);c.quadraticCurveTo(30,hip-22,20,hip-2);c.stroke();
-  c.beginPath();c.moveTo(-4,chest+26);c.lineTo(-2,hip-6);c.stroke();
-  if(tr.top==="purple"){c.fillStyle="rgba(255,255,255,.14)";c.fillRect(-3,chest+6,6,bodyH*0.5)}
-  if(tr.top==="hoodie"){c.fillStyle="rgba(0,0,0,.20)";rr(c,-26,chest+6,52,26,12);c.fill()}
+  c.fillStyle="rgba(0,0,0,.16)";
+  c.beginPath();c.moveTo(-sh+8,chest+breathe);c.lineTo(-6,chest+breathe+2);c.lineTo(-4,hip);c.lineTo(-hp,hip);
+  c.lineTo(-hp+6,chest+16);c.closePath();c.fill();
   c.restore();
 
-  /* ---- arms (pose dependent) ---- */
-  const armY=chest+16;
-  c.strokeStyle=topC;c.lineWidth=17;c.lineCap="round";
-  if(wave){ // secret: hand up, waving
-    c.beginPath();c.moveTo(hw-6,armY);c.quadraticCurveTo(hw+30,armY-30,hw+16,armY-72);c.stroke();
-    c.fillStyle=C.null;ell(c,hw+16,armY-80,10,10);
-    c.save();c.translate(hw+16,armY-80);c.rotate(Math.sin(t*9)*0.4);
-    c.strokeStyle=C.null;c.lineWidth=8;c.beginPath();c.moveTo(0,0);c.lineTo(0,-14);c.stroke();c.restore();
-    c.beginPath();c.moveTo(-hw+6,armY);c.quadraticCurveTo(-hw-16,armY+26,-10,hip-16);c.stroke();
+  /* arms: only what the pose needs */
+  const armY=chest+18;
+  c.strokeStyle=topC;c.lineWidth=19;c.lineCap="round";
+  if(wave){
+    c.beginPath();c.moveTo(sh-4,armY);c.quadraticCurveTo(sh+26,armY-28,sh+14,armY-64);c.stroke();
+    c.fillStyle=C.null;ell(c,sh+14,armY-72,11,11);
+    c.strokeStyle=C.null;c.lineWidth=9;c.beginPath();c.moveTo(sh+14,armY-78);c.lineTo(sh+14,armY-92);c.stroke();
+    c.strokeStyle=topC;c.lineWidth=19;
+    c.beginPath();c.moveTo(-sh+4,armY);c.quadraticCurveTo(-sh-10,armY+26,-14,hip-10);c.stroke();
   } else if(pose==="slouch"){
-    c.beginPath();c.moveTo(-hw+6,armY);c.quadraticCurveTo(-hw-26,armY-6,-hw-40,armY-26);c.stroke();
-    c.beginPath();c.moveTo(hw-6,armY);c.quadraticCurveTo(hw+18,armY+30,6,hip-14);c.stroke();
-    c.fillStyle=C.null;ell(c,hw+22,armY+34,10,9);
-  } else if(pose==="cross"){
-    c.beginPath();c.moveTo(-hw+6,armY);c.quadraticCurveTo(-hw-10,armY+34,4,hip-10);c.stroke();
-    c.beginPath();c.moveTo(hw-6,armY);c.quadraticCurveTo(hw+12,armY+30,-6,hip-6);c.stroke();
+    c.beginPath();c.moveTo(-sh+4,armY);c.quadraticCurveTo(-sh-18,armY-2,-sh-26,armY-20);c.stroke();
+    c.beginPath();c.moveTo(sh-4,armY);c.quadraticCurveTo(sh+14,armY+26,4,hip-8);c.stroke();
   } else {
-    c.beginPath();c.moveTo(-hw+6,armY);c.quadraticCurveTo(-hw-12,armY+28,-14,hip-14);c.stroke();
-    c.beginPath();c.moveTo(hw-6,armY);c.quadraticCurveTo(hw+12,armY+28,14,hip-14);c.stroke();
+    c.beginPath();c.moveTo(-sh+4,armY);c.quadraticCurveTo(-sh-8,armY+26,-16,hip-8);c.stroke();
+    c.beginPath();c.moveTo(sh-4,armY);c.quadraticCurveTo(sh+8,armY+26,16,hip-8);c.stroke();
   }
+  c.fillStyle=C.null;ell(c,-16,hip-6,9,8);ell(c,16,hip-6,9,8);
 
-  /* ---- gadget + glow cast ---- */
-  const gy=hip-30, gx=(pose==="lean")?6:0;
+  /* gadget + warm bounce on chest */
+  const gy=hip-24, gx=0;
   const gcol=GADGET_COLOR[tr.gadget]||"#c43a3a";
   if(tr.gadget!=="paperback"){
-    const gg=ctx.createRadialGradient(gx,gy,4,gx,gy,86);
-    gg.addColorStop(0,gcol+"88");gg.addColorStop(.5,gcol+"22");gg.addColorStop(1,gcol+"00");
-    c.fillStyle=gg;ell(c,gx,gy-16,54,66);
-    // light on chest + face
-    c.save();c.globalAlpha=.20;c.fillStyle=gcol;ell(c,gx,headY+30,26,18);c.restore();
+    const gg=ctx.createRadialGradient(gx,gy,2,gx,gy,90);
+    gg.addColorStop(0,gcol+"66");gg.addColorStop(.55,gcol+"18");gg.addColorStop(1,gcol+"00");
+    c.fillStyle=gg;ell(c,gx,gy-14,50,60);
   }
   drawGadget(c,tr.gadget,gx,gy,t,opt);
 
-  /* ---- head (38% of height) ---- */
+  /* head: circle + flat chin, 38% of height; ears sit on the crown, not the face */
   const hr=headH*0.5;
   c.save();
-  const headTilt=(pose==="slouch")?8:(pose==="lean")?12:(awake?-6:0);
-  c.translate(0,headY);c.rotate(headTilt*Math.PI/180);
+  const ht=(pose==="slouch")?7:(pose==="lean")?10:(awake?-5:0);
+  c.translate(0,headY);c.rotate(ht*Math.PI/180);
   c.fillStyle=C.null;
-  c.beginPath();
-  c.moveTo(-hr,0);c.quadraticCurveTo(-hr,-hr*1.05,0,-hr*1.05);
-  c.quadraticCurveTo(hr,-hr*1.05,hr,0);
-  c.quadraticCurveTo(hr*.9,hr*.8,0,hr*.82);   // flat chin
-  c.quadraticCurveTo(-hr*.9,hr*.8,-hr,0);
-  c.closePath();c.fill();
+  c.beginPath();c.arc(0,0,hr,Math.PI*0.98,Math.PI*2.02);
+  c.quadraticCurveTo(hr*0.92,hr*0.86,0,hr*0.88);
+  c.quadraticCurveTo(-hr*0.92,hr*0.86,-hr,0);c.closePath();c.fill();
   {const ss=opt.ss||1, ox=opt.sx||0, oy=opt.sy||0;
-   SURVEY.push({el:"head",x:ox+(0-hr)*ss,y:oy+(headY-hr)*ss,w:hr*2*ss,h:hr*2*ss,color:"#07060a",traits:tr});}
-  // rim light: teal from tube (top-left), amber from train (right)
-  c.strokeStyle="rgba(125,255,176,.85)";c.lineWidth=2.4;
-  c.beginPath();c.arc(0,-hr*0.18,hr*.98,Math.PI*1.06,Math.PI*1.62);c.stroke();
-  c.strokeStyle="rgba(245,184,114,.85)";c.lineWidth=2.4;
-  c.beginPath();c.arc(0,-hr*0.18,hr*.98,Math.PI*1.86,Math.PI*0.42);c.stroke();
-
+   SURVEY.push({el:"head",x:ox-hr*ss,y:oy+(headY-hr)*ss,w:hr*2*ss,h:hr*2*ss,color:"#07060a",traits:tr});}
+  c.strokeStyle="rgba(125,255,176,.9)";c.lineWidth=2.2;
+  c.beginPath();c.arc(0,0,hr-1,Math.PI*1.04,Math.PI*1.55);c.stroke();
+  c.strokeStyle="rgba(245,184,114,.55)";c.lineWidth=1.8;
+  c.beginPath();c.arc(0,0,hr-1,Math.PI*1.92,Math.PI*0.35);c.stroke();
   drawEars(c,tr.ears,hr,t);
   drawEyewear(c,tr.eyewear,hr,t,awake);
   if(tr.eyewear!=="visor"&&tr.eyewear!=="goggles")drawEyes(c,tr.eyes,hr,t,awake,opt.ph);
   c.restore();
-
   c.restore();
 }
-
 function pant(c,x1,y1,x2,y2,w,col,extra){
   c.fillStyle=col;
   c.beginPath();
@@ -447,6 +420,7 @@ function drawScene(t,scroll,stop){
   const g=ctx.createLinearGradient(0,0,0,760);
   g.addColorStop(0,C.night);g.addColorStop(.5,"#141026");g.addColorStop(1,"#241a3a");
   ctx.fillStyle=g;ctx.fillRect(0,0,W,760);
+  ctx.save();ctx.translate(0,-110);      // composition: platform sits in the middle of the window
   drawFarTrain(scroll,t);          // step 1
   drawBackWall(scroll,t);          // step 1
   // pillars + tube
@@ -476,11 +450,16 @@ function drawScene(t,scroll,stop){
     if(sx<-460||sx>W+460)continue;
     drawBenchSeg(sx,it,t,stop);
   }
+  // key light pool on the floor (the tube is the only emitter)
+  const pool=ctx.createRadialGradient(480,560,20,480,560,420);
+  pool.addColorStop(0,"rgba(125,255,176,.16)");pool.addColorStop(1,"rgba(125,255,176,0)");
+  ctx.fillStyle=pool;ctx.fillRect(0,420,W,340);
   // rain
   if(stop.weather==="rain"){
     ctx.strokeStyle="rgba(180,220,255,.22)";ctx.lineWidth=1.4;
     for(let i=0;i<70;i++){const x=(i*37+scroll*.9)%W,y=(i*61+t*420)%700;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-3,y+16);ctx.stroke()}
   }
+  ctx.restore();
   ctx.restore();
 }
 function drawBenchSeg(sx,it,t,stop){
