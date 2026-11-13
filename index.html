@@ -155,7 +155,7 @@ const sfxSpark=()=>{blip(1760,.09,"triangle",.16);blip(2340,.12,"sine",.1,.05)};
 /* ---------- state ---------- */
 const S={mode:"title",stop:0,lamps:3,results:[],sparks:0,name:"",seen:{},wipeHoles:[],
   trauma:0,hitStop:0,flash:0,answered:0,correct:0,lightsOut:false,qs:[],qi:0,q:null,typed:"",typing:false,
-  optSel:-1,scroll:0,stopPhase:"",phaseT:0,bestFrame:null,ghost:null,secrets:{},uncovered:{},
+  optSel:-1,locked:false,scroll:0,stopPhase:"",phaseT:0,bestFrame:null,ghost:null,secrets:{},uncovered:{},
   settings:false,stack:["title"],resume:null,wave:0};
 
 /* ---------- safe area (game-ui-ux §4) ---------- */
@@ -696,11 +696,23 @@ function makeQuestion(stop){
     return {type,prompt:"how many nulls were waiting on this platform?",options:shuffle(opts).map(v=>({label:v+" nulls",ok:v===n}))};
   }
   if(type==="who"){
+    // `puzzle` skill: exactly one correct option and no duplicate labels — dedupe by LABEL, not identity
     const target=pool[Math.floor(rnd()*pool.length)];
+    const seenLabels=new Set([labelNull(target)]);
     const opts=[{tr:target,ok:true}];
-    const others=allNullsOf(stop).filter(o=>o!==target);
-    shuffle(others).forEach(o=>{if(opts.length<4&&!opts.some(x=>x.tr===o))opts.push({tr:o,ok:false})});
-    while(opts.length<4)opts.push({tr:N({top:P.top[Math.floor(rnd()*5)],gadget:P.gadget[Math.floor(rnd()*9)],ears:P.ears[Math.floor(rnd()*6)]}),ok:false});
+    shuffle(allNullsOf(stop).filter(o=>o!==target)).forEach(o=>{
+      if(opts.length>=4)return;
+      const l=labelNull(o);
+      if(seenLabels.has(l))return;
+      seenLabels.add(l);opts.push({tr:o,ok:false});
+    });
+    let guard=0;
+    while(opts.length<4&&guard++<80){
+      const cand=N({top:P.top[Math.floor(rnd()*5)],gadget:P.gadget[Math.floor(rnd()*9)],ears:P.ears[Math.floor(rnd()*6)]});
+      const l=labelNull(cand);
+      if(seenLabels.has(l))continue;
+      seenLabels.add(l);opts.push({tr:cand,ok:false});
+    }
     return {type,prompt:"who was holding the "+labelGadget(target.gadget)+"?",options:shuffle(opts).map(o=>({label:labelNull(o.tr),ok:o.ok,tr:o.tr}))};
   }
   if(type==="absent"){
@@ -746,13 +758,14 @@ function tickStop(dt,t){
     S.scroll+=stop.speed*dt*1.7;S.phaseT+=dt;
     if(S.phaseT>2.4){
       S.stop++;
+      if(S.lamps<=0&&!S.retryUsed){S.retryUsed=true;S.mode="retry";return}
       if(S.lamps<=0||S.stop>=LINE.length){S.mode="finale";saveState();return}
       beginStop();
     }
   }
 }
 function nextPhase(){
-  S.phaseT=0;
+  S.phaseT=0;S.locked=false;
   if(S.stopPhase==="approach"){S.stopPhase="watch";return}
   if(S.stopPhase==="watch"){
     S.stopPhase="conductor";
@@ -794,7 +807,9 @@ function feedback(tier,t){
   if(tier==="large"){S.trauma=Math.min(1,S.trauma+0.55);S.flash=0.9;S.hitStop=0.06;S.pop=-1;return}
 }
 function answer(idx){
+  if(S.locked)return;                     // puzzle skill: never apply input mid-resolution
   const q=S.q;if(!q)return;const o=q.options[idx];if(!o)return;
+  S.locked=true;
   S.optSel=idx;
   const ok=!!o.ok;
   S.answered++;if(ok)S.correct++;
@@ -1001,6 +1016,11 @@ function onDown(ev){
   if(S.mode==="stop"&&S.stopPhase==="conductor"&&S.q){
     for(let i=0;i<4;i++){const y=panelText().top+118+i*46;if(p.y>y-34&&p.y<y+14){answer(i);return}}
   }
+  if(S.mode==="retry"){
+    if(p.y<650){S.lamps=3;S.lightsOut=false;S.correct=Math.max(0,S.correct-0);beginStop();S.mode="stop";}
+    else {S.mode="finale"}
+    return;
+  }
   if(S.mode==="finale"){S.mode="card";sfxCorrect();return}
   if(S.mode==="card"){downloadCard();return}
 }
@@ -1097,6 +1117,7 @@ function frame(now){
         }
       }
     }
+    else if(S.mode==="retry"){drawRetry()}
     else if(S.mode==="finale"){
       drawScene(t,0,LINE[6]);drawCabin(t,S.lamps);
       ctx.fillStyle="rgba(0,0,0,.62)";ctx.fillRect(0,0,W,H);
@@ -1117,6 +1138,18 @@ function frame(now){
     if(DEBUG!=="shots"&&DEBUG!=="gallery")present(t,S.lamps/3);
   }
   requestAnimationFrame(frame);
+}
+function drawRetry(){
+  ctx.fillStyle="rgba(6,5,12,.94)";ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#e8d6b0";ctx.font="700 34px ui-monospace,Menlo,monospace";ctx.textAlign="center";
+  ctx.fillText("five more minutes?",W/2,470);
+  ctx.font="700 26px ui-monospace,Menlo,monospace";ctx.fillStyle="rgba(232,214,176,.8)";
+  ctx.fillText("replay stop "+(S.stop+1)+" with all three lamps",W/2,530);
+  ctx.fillStyle="#9fe8b8";ctx.font="700 28px ui-monospace,Menlo,monospace";
+  ctx.fillText("> yes, once more",W/2,620);
+  ctx.fillStyle="rgba(232,214,176,.65)";ctx.font="700 24px ui-monospace,Menlo,monospace";
+  ctx.fillText("  no, take the card",W/2,676);
+  ctx.textAlign="left";
 }
 function drawHowTo(){
   ctx.fillStyle="#0b0714";ctx.fillRect(0,0,W,H);

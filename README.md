@@ -54,6 +54,19 @@ Everything is synthesised with Web Audio: brown-noise train bed, 900 Hz rail cla
 filtered wipe squeak that follows pointer speed, menu blips, a warm two-note chime for
 correct, a low thud for wrong, and a ticket punch on the reveal. `M` mutes.
 
+## Content checks
+
+`node validate.cjs` loads the real game code with a small DOM stub and checks every
+question the generator can produce (300 samples per stop): exactly one correct option,
+no duplicate labels, `count` equals every null on the stop, `absent` is genuinely absent,
+`who` targets exist, 4 options each, and 13 questions per run.
+
+```
+questions per run: 13 (brief: 13)
+checked 2100 generated questions, failures: 0
+PASS
+```
+
 ## Files
 
 - `index.html` — the whole game (canvas 2D, no assets, no dependencies)
