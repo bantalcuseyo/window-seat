@@ -24,6 +24,8 @@
 <div id="al" aria-live="polite"></div>
 <div id="safe" style="position:fixed;left:0;top:0;width:0;height:0;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);pointer-events:none"></div>
 <script>
+(function(){
+
 
 "use strict";
 window.addEventListener("error",function(e){window.__err=(e.message||"err")+" @line "+e.lineno;});
@@ -237,9 +239,10 @@ function drawNull(c,tr,x,y,s,t,opt={}){
   const stance={upright:0,slouch:6,cross:14,lean:-8}[pose]||0;
   const legTop=hip, legBot=-18;
   if(opt.sit){
-    // seated: thigh forward, shin down
+    // seated: thigh forward, shin down (simple, readable)
+    const pc2=BOTTOM_COLOR[tr.bottom]||C.jeans;
     const kneeY=legTop+26;
-    c.fillStyle=BOTTOM_COLOR[tr.bottom]||C.jeans;
+    c.fillStyle=pc2;
     c.beginPath();c.moveTo(-30,legTop-8);c.lineTo(6,legTop-8);c.lineTo(18,kneeY);c.lineTo(-26,kneeY+6);c.closePath();c.fill();
     c.beginPath();c.moveTo(-26,kneeY+6);c.lineTo(6,kneeY+4);c.lineTo(2,kneeY+48);c.lineTo(-24,kneeY+48);c.closePath();c.fill();
     drawShoe(c,-12,kneeY+56,tr.shoes,0);
@@ -474,25 +477,33 @@ function drawScene(t,scroll,stop){
 }
 function drawBenchSeg(sx,it,t,stop){
   const bx=sx-260;
-  // bench: backrest, seat slab, legs
-  ctx.fillStyle=C.benchSh;rr(ctx,bx,540,520,84,10);ctx.fill();
-  ctx.fillStyle=C.bench;rr(ctx,bx,556,520,62,10);ctx.fill();
-  ctx.fillStyle="rgba(0,0,0,.22)";
-  for(let r=0;r<3;r++)ctx.fillRect(bx+18,572+r*16,484,3);
-  ctx.fillStyle=C.benchHi;rr(ctx,bx,616,520,10,5);ctx.fill();
-  ctx.fillStyle=C.bench;rr(ctx,bx,618,520,26,8);ctx.fill();
-  ctx.fillStyle=C.benchSh;rr(ctx,bx,640,520,12,6);ctx.fill();
-  ctx.fillStyle=C.benchSh;ctx.fillRect(bx+28,652,18,58);ctx.fillRect(bx+474,652,18,58);
+  // bench: backrest, seat slab, legs — dark value against the pale wall (readable furniture)
+  ctx.fillStyle="rgba(0,0,0,.42)";rr(ctx,bx+6,548,508,92,12);ctx.fill();      // cast shadow behind
+  ctx.fillStyle="#16302a";rr(ctx,bx,536,520,92,10);ctx.fill();                 // backrest (darkest)
+  ctx.fillStyle="#1d3f35";rr(ctx,bx,548,520,74,10);ctx.fill();
+  ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=3;
+  for(let r=0;r<3;r++){ctx.beginPath();ctx.moveTo(bx+16,566+r*18);ctx.lineTo(bx+504,566+r*18);ctx.stroke()}
+  // seat top surface: mid teal with a bright rim toward the tube
+  // seat TOP PLANE in 3/4 view: back edge higher, front edge lower -> real depth
+  ctx.fillStyle="#3a7d64";
+  ctx.beginPath();ctx.moveTo(bx,612);ctx.lineTo(bx+520,612);ctx.lineTo(bx+536,640);ctx.lineTo(bx-16,640);ctx.closePath();ctx.fill();
+  ctx.fillStyle="rgba(125,255,176,.45)";
+  ctx.beginPath();ctx.moveTo(bx,612);ctx.lineTo(bx+520,612);ctx.lineTo(bx+522,616);ctx.lineTo(bx-2,616);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#16302a";
+  ctx.beginPath();ctx.moveTo(bx-16,640);ctx.lineTo(bx+536,640);ctx.lineTo(bx+536,660);ctx.lineTo(bx-16,660);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#101d19";ctx.fillRect(bx+30,656,20,62);ctx.fillRect(bx+470,656,20,62);
+  ctx.fillStyle="rgba(0,0,0,.30)";ctx.fillRect(bx+30,700,20,18);ctx.fillRect(bx+470,700,20,18);
   // props hint
   (it.frame.props||[]).forEach((p,i)=>{
     ctx.fillStyle="rgba(232,214,176,.22)";rr(ctx,bx+70+i*54,610,30,26,4);ctx.fill();
   });
   const n=it.frame.nulls.length;
   it.frame.nulls.forEach((tr,k)=>{
-    const nx=sx+(k-(n-1)/2)*160, ny=620;   // feet on bench top
+    const nx=sx+(k-(n-1)/2)*205, ny=614;   // feet on bench top
     const key=stop.id+":"+it.frame.id+":"+k;
     const seen=(S.seen[key]||0);
     const secret=S.secrets[key];
+    ctx.fillStyle="rgba(0,0,0,.38)";ell(ctx,nx,ny+22,52,9);   // contact shadow
     drawNull(ctx,tr,nx,ny-6,0.92,t,{ph:k*1.7+(it.idx*2.1),awake:seen>0.4||secret,wave:!!secret,sit:true});
     ENT.push({key,x:nx,y:ny-250,w:150,h:260,frame:it.frame.id,nullIdx:k,traits:tr,bench:sx});
   });
@@ -987,13 +998,13 @@ function stageXY(ev){const r=glc.getBoundingClientRect();
   const cx=(ev.touches?ev.touches[0].clientX:ev.clientX)-r.left;
   const cy=(ev.touches?ev.touches[0].clientY:ev.clientY)-r.top;
   return {x:cx/r.width*W,y:cy/r.height*H};}
-function top(){return S.stack[S.stack.length-1]}
+function topScreen(){return S.stack[S.stack.length-1]}
 function push(screen){S.stack.push(screen)}
 function pop(){if(S.stack.length>1)S.stack.pop()}
 function onDown(ev){
   ev.preventDefault();auInit();const p=stageXY(ev);
   pointer.down=true;pointer.x=p.x;pointer.y=p.y;pointer.hold=0;
-  if(top()==="options"){
+  if(topScreen()==="options"){
     if(p.y>240&&p.y<240+8*86){
       const i=Math.floor((p.y-240)/86);S.setSel=i;
       if(i===0&&AU.master)AU.master.gain.value=AU.master.gain.value>0?0:0.5;
@@ -1006,7 +1017,7 @@ function onDown(ev){
     } else if(p.y>H-220){pop()}
     return;
   }
-  if(top()==="howto"){pop();return}
+  if(topScreen()==="howto"){pop();return}
   if(S.mode==="title"){
     if(p.y>500&&p.y<620){startRun(true);return}
     if(p.y>=620&&p.y<690){push("howto");return}
@@ -1065,8 +1076,8 @@ function frame(now){
     }
     ctx.fillStyle=C.night;ctx.fillRect(-20,-20,W+40,H+40);
     if(S.mode==="title")drawTitle(t);
-    else if(top()==="howto"){drawHowTo()}
-    else if(top()==="options")drawSettings();
+    else if(topScreen()==="howto"){drawHowTo()}
+    else if(topScreen()==="options")drawSettings();
     else if(S.mode==="board"){
       drawScene(t,20,LINE[0]);drawCabin(t,3);
       ctx.fillStyle="rgba(0,0,0,.6)";ctx.fillRect(0,0,W,H);
@@ -1216,9 +1227,11 @@ if(DEBUG==="gallery"){gallery();setInterval(()=>present(0,1),300);}
 else if(DEBUG==="shots"){contactSheet();setInterval(()=>present(0,1),300);}
 else requestAnimationFrame(frame);
 window.__ws={get S(){return S},get cfg(){return cfg},get ENT(){return ENT},
-  frame,drawCard,drawScene,present,contactSheet,gallery,stripOf,watchSeconds,
-  startRun,beginStop,answer,makeQuestion,fogAlphaAt,tier,cardCode,LINE};
+  frame,drawCard,drawScene,present,contactSheet,gallery,stripOf,watchSeconds,allNullsOf,
+  startRun,beginStop,answer,makeQuestion,questionsFor,labelGadget,fogAlphaAt,tier,cardCode,LINE};
 
+
+})();
 </script>
 </body>
 </html>

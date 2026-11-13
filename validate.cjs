@@ -6,10 +6,9 @@ require("/tmp/domstub.cjs");
 const fs = require("fs");
 const src = fs.readFileSync("/home/ubuntu/window-seat/index.html", "utf8");
 const js = src.split("<script>")[1].split("</script>")[0];
-const names = ["LINE", "makeQuestion", "allNullsOf", "questionsFor", "S", "labelGadget"];
-const factory = new Function(js + "\nreturn {" + names.join(",") + "};");
 let api;
-try { api = factory(); } catch (e) { console.log("LOAD FAIL:", e.message); process.exit(1); }
+try { (0, eval)(js); api = global.__ws; } catch (e) { console.log("LOAD FAIL:", e.message); process.exit(1); }
+if (!api) { console.log("LOAD FAIL: no __ws handle"); process.exit(1); }
 const { LINE, makeQuestion, allNullsOf, questionsFor } = api;
 
 let fails = 0, checked = 0;
